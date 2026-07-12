@@ -1,0 +1,33 @@
+{
+  "name": "@introspection-recipes/travel-agent",
+  "version": "0.1.0",
+  "description": "A git-backed Pi recipe: a travel agent that books on a customer's behalf via a person_authorized connector (AAuth demo).",
+  "keywords": [
+    "pi-package",
+    "managed-agent",
+    "recipe",
+    "connectors",
+    "aauth"
+  ],
+  "type": "module",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "check": "recipes check . --profile ci",
+    "check:json": "recipes check . --profile ci --json",
+    "prepare": "git config core.hooksPath .githooks || true"
+  },
+  "devDependencies": {
+    "@introspection-ai/pi-recipes": "^0.6.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "agents": [
+      "./agents/*.yaml"
+    ]
+  }
+}

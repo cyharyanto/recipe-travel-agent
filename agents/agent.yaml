@@ -1,0 +1,26 @@
+name: agent
+description: Travel agent that books trips on a customer's behalf
+model:
+  name: anthropic/claude-sonnet-4-6
+  thinking_level: low
+tools:
+  - read
+  - bash
+  - write
+skills: []
+subagents: []
+system_instructions:
+  mode: append
+  content: ""
+# Connector access this agent may use (docs/design/connectors-aauth-b2b2c.md §18).
+# recipe-check ignores unknown agent keys today, so this validates now; the
+# pi-recipes PR adds the `connectors:` schema (+ a `strict: true` mode). The
+# connector *definition* (endpoints/creds/Person Server/approval policy) lives
+# org-side in the CP; this only references connectors + scopes them.
+connectors:
+  booking:
+    subject: person          # act on the customer's behalf
+    scopes: [booking.reserve] # subset of the connector's scopes this agent needs
+  gmail:
+    subject: person
+    scopes: [gmail.send]
