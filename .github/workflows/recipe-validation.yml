@@ -32,3 +32,24 @@ jobs:
         with:
           name: recipe-check-report
           path: recipe-check-report.json
+
+  policy-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Cedar CLI
+        id: cedar-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cedar
+          key: cedar-policy-cli-4
+
+      - name: Install Cedar CLI
+        if: steps.cedar-cache.outputs.cache-hit != 'true'
+        run: cargo install cedar-policy-cli --locked
+
+      - name: Validate policies against schema
+        run: |
+          cat policies/*.cedar > /tmp/policyset.cedar
+          cedar validate --schema policies/schema.cedarschema --policies /tmp/policyset.cedar

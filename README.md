@@ -16,13 +16,17 @@ judge, §18 the `connectors:` recipe block).
   [`agents/agent.yaml`](agents/agent.yaml).
 - **Per-action approval**: high-stakes actions (book, email) go through a Person
   Server; `pending` is a first-class state, not an error.
+- **Deterministic policy rails**: [`policies/*.cedar`](policies/) hard-cap what
+  any approval can grant — the payment step-up is capped at $500 single-use no
+  matter who (or what) approved it.
 
-## The full scope — three layers
+## The full scope — four layers
 
-A person-authorized action spans three layers. The connector is the standing
-capability, the recipe references it, and the **mission** is the per-action
-envelope a human approves at runtime. Config defines the *ceiling*; the mission
-is the *instance*.
+A person-authorized action spans four layers. The connector is the standing
+capability, the recipe references it, the recipe's **policies** are the
+deterministic rails around it, and the **mission** is the per-action envelope a
+human approves at runtime. Config defines the *ceiling*; the mission is the
+*instance*.
 
 ### 1. Connector — the org-side definition (Control Plane)
 
@@ -60,9 +64,35 @@ connectors:
   gmail:
     subject: person
     scopes: [gmail.send]
+  stripe: # payment step-up: a second, higher-stakes approval
+    subject: person
+    scopes: [charge]
 ```
 
-### 3. Mission — the per-action envelope (runtime)
+### 3. Policies — deterministic rails (`policies/*.cedar`)
+
+[Cedar](https://www.cedarpolicy.com/) policies, versioned with the agent's code,
+evaluated by the platform on **every token request**. Missions are what a human
+approves; policies are the hard rail *around* the approval — deterministic,
+immune to prompt injection or an over-persuaded approver:
+
+```cedar
+// policies/payments.cedar — holds regardless of what was approved upstream
+permit (principal, action == Action::"connector:use", resource == Connector::"stripe")
+when {
+  context.mission.granted &&
+  context.mission.subject == "person" &&
+  context.mission has amount_cents && context.mission.amount_cents <= 50000 &&
+  context.mission has single_use && context.mission.single_use
+};
+```
+
+If `policies/` exists, connector use is **default-deny**: only what a policy
+permits can mint. Each layer only narrows the previous one (org config ∩ recipe
+policies ∩ mission). Loosening a rail requires a commit + redeploy — the review
+gate. See [`policies/README.md`](policies/README.md) for validation.
+
+### 4. Mission — the per-action envelope (runtime)
 
 The mission is **not configuration** — its envelope (which hotel, which dates,
 the real amount, the recipient) is specific to each action, so the agent authors
@@ -106,6 +136,9 @@ deterministic envelope binds byte-exact regardless of the verdict.
 - **Validator:** `recipe-check` ignores unknown agent keys today, so the
   `connectors:` block validates now; the `pi-recipes` PR adds its schema (+ a
   `strict: true` mode).
+- **Policies:** the `policies/*.cedar` rails validate in CI now (Cedar CLI
+  against `policies/schema.cedarschema`); platform-side evaluation at token-mint
+  time is pending.
 
 Until the runtime SDK lands, the agent describes the intended action + the
 approval it needs.
@@ -123,5 +156,6 @@ until this repo is pushed + linked to the project; enable an explicit run with
 ```text
 .introspection/travel-agent.yaml   # the GitOps manifest Introspection discovers
 agents/agent.yaml                  # the runnable travel agent (+ the connectors: block)
+policies/                          # Cedar policy rails (schema + booking/payments)
 SYSTEM.md                          # the base system prompt
 ```
