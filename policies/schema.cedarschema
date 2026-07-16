@@ -1,0 +1,34 @@
+// Cedar schema for connector-use policies.
+//
+// This is the contract the platform evaluates `policies/*.cedar` against when
+// the agent requests a connector token. Validate locally with the Cedar CLI:
+//
+//   cargo install cedar-policy-cli --locked
+//   cat policies/*.cedar > /tmp/policyset.cedar
+//   cedar validate --schema policies/schema.cedarschema --policies /tmp/policyset.cedar
+//
+// CI runs the same check (see .github/workflows/recipe-validation.yml).
+
+entity Agent;
+entity Connector;
+
+action "connector:use" appliesTo {
+  principal: [Agent],
+  resource: [Connector],
+  context: {
+    // The mission envelope the human granted (or is being asked to grant).
+    mission: {
+      granted: Bool,
+      subject: String,          // "app" | "user" | "person"
+      amount_cents?: Long,      // present on payment-shaped missions
+      currency?: String,
+      single_use?: Bool,
+      resource?: String,        // recipient/resource lock (opaque)
+    },
+    // The deployed recipe identity, bound by the platform — not recipe-supplied.
+    recipe: {
+      slug: String,
+      commit: String,
+    },
+  }
+};

@@ -24,3 +24,8 @@ system_instructions:
 #   gmail:
 #     subject: person
 #     scopes: [gmail.send]
+#   stripe:                    # payment step-up: a second, higher-stakes approval
+#     subject: person
+#     scopes: [charge]
+# Deterministic rails for these connectors live in policies/*.cedar (Cedar),
+# evaluated by the platform on every token request — see policies/README.md.
