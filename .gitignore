@@ -1,6 +1,22 @@
+# Runtime secrets — never commit
+auth.json
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Dependencies and build artifacts
 node_modules/
-.env
-.env.*
+**/node_modules/
+**/.next/
+**/out/
+**/dist/
+**/.turbo/
+**/.vercel/
+**/tsconfig.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Generated Pi runtime state
 .pi/bin/
@@ -11,3 +27,7 @@ node_modules/
 # Generated Introspection CLI local state
 .introspection/local.json
 .introspection/.gitignore
+
+# OS cruft
+.DS_Store
+**/._*

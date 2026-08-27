@@ -14,23 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Validate recipe
-        run: npx -y -p @introspection-ai/cli introspection check
-
-      - name: Write structured report
-        if: always()
-        run: npx -y -p @introspection-ai/cli introspection check --output json > recipe-check-report.json || true
-
-      - name: Upload recipe check report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: recipe-check-report
-          path: recipe-check-report.json
+      - uses: introspection-org/recipes-action@v0
 
   policy-check:
     runs-on: ubuntu-latest

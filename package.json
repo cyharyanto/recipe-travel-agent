@@ -17,13 +17,8 @@
     "check:json": "npx -y -p @introspection-ai/cli@latest introspection check --output json",
     "prepare": "git config core.hooksPath .githooks || true"
   },
-  "devDependencies": {
+  "dependencies": {
     "@introspection-ai/recipes": "^0.21.0"
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-agent-core": "*",
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*"
   },
   "pi": {
     "agents": [
