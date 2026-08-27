@@ -1,0 +1,6 @@
+node_modules/
+
+# Generated Pi runtime state
+.pi/bin/
+.pi/mcp-session.json
+.pi/mcporter.json

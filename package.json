@@ -13,12 +13,12 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "check": "recipes check . --profile ci",
-    "check:json": "recipes check . --profile ci --json",
+    "check": "npx -y -p @introspection-ai/cli@latest introspection check",
+    "check:json": "npx -y -p @introspection-ai/cli@latest introspection check --output json",
     "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
-    "@introspection-ai/pi-recipes": "^0.6.0"
+    "@introspection-ai/recipes": "^0.21.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-agent-core": "*",

@@ -12,7 +12,7 @@ subagents: []
 system_instructions:
   mode: append
   content: ""
-# Connector access will be declared here once the *runtime* pi-recipes loader
+# Connector access will be declared here once the Recipes runtime loader
 # supports a `connectors:` key (docs/design/connectors-aauth-b2b2c.md §18). Kept
 # commented: the runtime loader is strict and SKIPS the whole agent.yaml on any
 # unknown key, so an uncommented block silently disables this agent. The connector

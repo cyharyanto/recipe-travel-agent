@@ -133,9 +133,9 @@ deterministic envelope binds byte-exact regardless of the verdict.
   2. **Runtime `getToken` SDK** (§7) — so the in-sandbox agent can call the broker.
 - **Optional follow-up:** a connector-level `mission_bounds` ceiling every mission
   must fit inside (what makes `judge_auto_within_envelope` safe).
-- **Validator:** `recipe-check` ignores unknown agent keys today, so the
-  `connectors:` block validates now; the `pi-recipes` PR adds its schema (+ a
-  `strict: true` mode).
+- **Validator:** Recipe validation ignores unknown agent keys today, so the
+  `connectors:` block validates now; a future Recipes schema update will add
+  this key (+ a `strict: true` mode).
 - **Policies:** the `policies/*.cedar` rails validate in CI now (Cedar CLI
   against `policies/schema.cedarschema`); platform-side evaluation at token-mint
   time is pending.
