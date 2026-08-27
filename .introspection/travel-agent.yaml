@@ -1,5 +1,4 @@
 name: travel-agent
-runtime_name: travel-agent
 path: .
 description: A Pi agent that books travel on a customer's behalf via a person_authorized connector (AAuth demo)
 runtime:
