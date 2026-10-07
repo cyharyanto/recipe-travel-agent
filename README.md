@@ -131,8 +131,9 @@ What happens next is the platform's, not the recipe's
   provider and Acme's Person Server.
 - **Policies:** `policies/*.cedar` validate in CI; nothing evaluates them at
   runtime. The company's policy lives in its Person Server.
-- **Not enforced yet:** the gate checks that an approval exists, not that the
-  request body matches the approved envelope.
+- **What the gate binds:** an approval lets through one request, declaring the
+  approved `resource` (the offer id). It does not read the request body, so it
+  trusts the tool to declare the offer it books, as `book_item` does.
 
 ## Register it as a runtime
 
