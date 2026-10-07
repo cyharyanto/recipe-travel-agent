@@ -1,19 +1,21 @@
 # Travel Agent Recipe
 
-A Git-backed Introspection recipe: a **travel agent** that books trips **on a
-customer's behalf** via a `person_authorized` **connector**, with per-action
-human approval through a Person Server. The recipe counterpart to the
-`apps/partner` `/travel-agent` demo — this is the *authoring* model.
+A Git-backed Introspection recipe: **Flight Sector's travel agent**, which books
+work travel for a company's employees from a Slack DM, through a
+`person_authorized` **connector**. Every booking is approved by the employee's
+company through its own Person Server: in policy it books at once, over policy
+it waits for their manager.
 
-Design: `introspection-cloud/docs/design/connectors-aauth-b2b2c.md` (§17 mission
-judge, §18 the `connectors:` recipe block).
+Design: `introspection-cloud/docs/design/connectors-aauth-b2b2c.md` (§12.2 the
+sandbox-agent leg, §17 mission judge, §18 the `connectors:` recipe block).
 
 ## What this demonstrates
 
 - An agent that acts **on behalf of a person**, never on its own authority.
-- **Connectors as a recipe concern**: the agent declares which connectors it may
-  use + the subset of scopes it needs — see the `connectors:` block in
-  [`agents/agent.yaml`](agents/agent.yaml).
+- **No credential in the sandbox**: the platform injects the booking token at
+  egress, and only behind an approved mission.
+- **Connectors as a recipe concern** (planned): the agent will declare which
+  connectors it may use and the scopes it needs, in a `connectors:` block.
 - **Per-action approval**: high-stakes actions (book, email) go through a Person
   Server; `pending` is a first-class state, not an error.
 - **Deterministic policy rails**: [`policies/*.cedar`](policies/) hard-cap what
@@ -42,8 +44,9 @@ and how missions are decided.
   "subject_scope": "person",
   "scopes": ["booking.reserve"],              // the action classes this connector allows
   "api_hosts": ["api.booking.example"],       // egress allowlist
-  "person_server_mode": "managed",            // managed (hosted by us) | byo | discovered
-  "approval_policy": "judge_advises_human"     // human | judge_advises_human | judge_auto_within_envelope
+  "person_server_mode": "byo",                // managed (hosted by us) | byo | discovered
+  "person_server_url": "https://ps.acme.example/missions", // byo: receives each pending mission
+  "approval_policy": "human"                  // human | judge_advises_human | judge_auto_within_envelope
 }
 ```
 
@@ -53,8 +56,9 @@ human-granted policy, never the boundary itself.
 
 ### 2. Recipe — the agent references + scopes the connector
 
-`agents/agent.yaml` only names connectors and narrows scopes (the same split as
-MCP servers — the definition is org-side):
+Planned: `agents/agent.yaml` will name connectors and narrow scopes (the same
+split as MCP servers — the definition is org-side). The recipe loader rejects
+unknown keys today, so this block is not in the file yet:
 
 ```yaml
 connectors:
@@ -94,54 +98,41 @@ gate. See [`policies/README.md`](policies/README.md) for validation.
 
 ### 4. Mission — the per-action envelope (runtime)
 
-The mission is **not configuration** — its envelope (which hotel, which dates,
-the real amount, the recipient) is specific to each action, so the agent authors
-it at `getToken` time and the customer approves (or narrows) it. It maps 1:1 to
-`MissionConstraints`:
+The mission is **not configuration**: its envelope (which offer, the real amount)
+is specific to each booking, so the tool declares it on the request. It maps 1:1
+to `MissionConstraints`. [`extensions/booking.js`](extensions/booking.js) sends it
+in an `Introspection-Mission` header, the only approval-aware line in the recipe:
 
 ```jsonc
-// the agent's getToken call for one booking
-getToken("booking.reserve", {
-  subject: "person",
-  requested_permissions: {          // MissionConstraints — the envelope
-    host: "api.booking.example",    // request-audience lock
-    resource: "hotel:barcelona-arts", // recipient/resource lock the human sees
-    limits: { amount_max: 2400, count: 1 },
-    window_start: "2026-08-12T00:00:00Z",
-    window_end:   "2026-08-15T00:00:00Z"
-  }
-})
-// → 202 { status: "authorization_pending", mission_id, approval_url }
-//   Person Server: "Book hotel:barcelona-arts, 12–15 Aug, ≤ €2,400 — approve?"
-//   human approves → signed AAuth auth token (PoP) → resource token, bound to the granted envelope
+// book_item → POST /v1/reserve, with
+// Introspection-Mission: {"action": "hotel.reserve", "requested_permissions": {
+//   "host": "api.booking.example", "resource": "<offer_id>",
+//   "limits": {"amount_max": 1680, "nightly_rate": 420, "count": 1}}}
 ```
 
-For `gmail.send` the same shape carries `resource: "alice@example.com"` (the
-recipient) instead of an amount. The connector's `approval_policy` decides
-whether a judge advises or (within the envelope) may auto-approve; the
-deterministic envelope binds byte-exact regardless of the verdict.
+What happens next is the platform's, not the recipe's
+(`introspection-cloud` `docs/design/connectors-aauth-b2b2c.md` §12.2):
 
-## What's live vs pending
+1. The egress mission gate answers the reservation `428 mission-required`; the
+   provider token is never injected.
+2. The runtime reports the declared mission. The control plane opens it and hands
+   it to the company's own Person Server (the connector's `person_server_url`),
+   and the tool result tells the agent the booking was sent for approval.
+3. The Person Server applies its company's policy: within the nightly cap it
+   approves at once; over it, it asks the traveller's manager.
+4. When it is decided, the agent is told in the same DM. It retries, the gate
+   lets that one request through with the injected token, and the booking lands.
 
-- **Live:** connector CRUD + the `person_authorized` broker branch (creates a
-  pending mission, returns `approval_url`), behind `CONNECTORS_ENABLED`.
-- **Pending — the two pieces that make the envelope real end-to-end:**
-  1. **`getToken` action + `requested_permissions`** — `BrokerTokenRequest`
-     carries only `{connector_id, subject}` today, so the mission is created with
-     an *empty* envelope. Plumbing `action` + `requested_permissions` through is
-     what fills the mission above.
-  2. **Runtime `getToken` SDK** (§7) — so the in-sandbox agent can call the broker.
-- **Optional follow-up:** a connector-level `mission_bounds` ceiling every mission
-  must fit inside (what makes `judge_auto_within_envelope` safe).
-- **Validator:** Recipe validation ignores unknown agent keys today, so the
-  `connectors:` block validates now; a future Recipes schema update will add
-  this key (+ a `strict: true` mode).
-- **Policies:** the `policies/*.cedar` rails validate in CI now (Cedar CLI
-  against `policies/schema.cedarschema`); platform-side evaluation at token-mint
-  time is pending.
+## Status
 
-Until the runtime SDK lands, the agent describes the intended action + the
-approval it needs.
+- **Live on the platform branch:** the mission gate, opening missions for a
+  sandbox session, the hand-off to a `byo` Person Server, and the resume.
+- **Example:** `introspection-js-sdk` `examples/aauth-travel` runs the booking
+  provider and Acme's Person Server.
+- **Policies:** `policies/*.cedar` validate in CI; nothing evaluates them at
+  runtime. The company's policy lives in its Person Server.
+- **Not enforced yet:** the gate checks that an approval exists, not that the
+  request body matches the approved envelope.
 
 ## Register it as a runtime
 
@@ -155,7 +146,8 @@ until this repo is pushed + linked to the project; enable an explicit run with
 
 ```text
 .introspection/travel-agent.yaml   # the GitOps manifest Introspection discovers
-agents/agent.yaml                  # the runnable travel agent (+ the connectors: block)
+agents/agent.yaml                  # the runnable travel agent
+extensions/booking.js              # search_offers + book_item, declaring each booking's mission
 policies/                          # Cedar policy rails (schema + booking/payments)
 SYSTEM.md                          # the base system prompt
 ```

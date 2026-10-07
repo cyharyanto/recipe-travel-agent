@@ -1,0 +1,30 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@introspection-ai/recipe-channel-slack':
+        specifier: '>=0.4.0'
+        version: 0.4.0
+
+packages:
+
+  '@introspection-ai/recipe-channel-slack@0.4.0':
+    resolution: {integrity: sha512-503obuiKfHLibc5PTtABxOoQ2jjDp4vrIpROzjZ4hKRzYYjs0p0fUSO+s0r8elokwFN57/EpLugVxQUIxScuew==}
+    engines: {node: '>=24'}
+    peerDependencies:
+      '@earendil-works/pi-coding-agent': '>=0.86.1'
+      '@introspection-ai/recipes': ^0.26.0
+      typebox: '*'
+    peerDependenciesMeta:
+      '@earendil-works/pi-coding-agent':
+        optional: true
+
+snapshots:
+
+  '@introspection-ai/recipe-channel-slack@0.4.0': {}
