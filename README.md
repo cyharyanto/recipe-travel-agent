@@ -1,26 +1,26 @@
 # Travel Agent Recipe
 
 A Git-backed Introspection recipe: **Flight Sector's travel agent**, which books
-work travel for a company's employees from a Slack DM, through a
-`person_authorized` **connector**. Every booking is approved by the employee's
-company through its own Person Server: in policy it books at once, over policy
-it waits for their manager.
+work travel for a company's employees from a Slack DM, through an `aauth`
+**connector**. The booking provider is a native [AAuth](https://github.com/dickhardt/AAuth)
+resource and the employee's company runs the Person Server that speaks for
+them: in policy a booking goes through at once, over policy it waits for their
+manager.
 
-Design: `introspection-cloud/docs/design/connectors-aauth-b2b2c.md` (§12.2 the
-sandbox-agent leg, §17 mission judge, §18 the `connectors:` recipe block).
+Design: `introspection-cloud/docs/design/connectors-aauth-b2b2c.md` (§12.3 the
+AAuth agent, §18 the `connectors:` recipe block).
 
 ## What this demonstrates
 
 - An agent that acts **on behalf of a person**, never on its own authority.
-- **No credential in the sandbox**: the platform injects the booking token at
-  egress, and only behind an approved mission.
-- **Connectors as a recipe concern** (planned): the agent will declare which
-  connectors it may use and the scopes it needs, in a `connectors:` block.
-- **Per-action approval**: high-stakes actions (book, email) go through a Person
-  Server; `pending` is a first-class state, not an error.
-- **Deterministic policy rails**: [`policies/*.cedar`](policies/) hard-cap what
-  any approval can grant — the payment step-up is capped at $500 single-use no
-  matter who (or what) approved it.
+- **No credential in the sandbox**: the platform is the Agent Provider. Egress
+  signs each request (RFC 9421) with the session's key and presents the agent
+  token; the provider answers with a resource token, and egress exchanges it at
+  the company's Person Server for an auth token.
+- **The company decides**: Acme's Person Server applies its own policy to the
+  provider-signed quote, and asks the employee's manager when a booking is over
+  it. `pending` is a first-class state, not an error: the agent is told, and
+  the chat resumes when the manager decides.
 
 ## The full scope — four layers
 
@@ -40,13 +40,12 @@ and how missions are decided.
 {
   "name": "Booking",
   "provider": "booking",
-  "auth_mode": "person_authorized",
+  "auth_mode": "aauth",
   "subject_scope": "person",
   "scopes": ["booking.reserve"],              // the action classes this connector allows
-  "api_hosts": ["api.booking.example"],       // egress allowlist
-  "person_server_mode": "byo",                // managed (hosted by us) | byo | discovered
-  "person_server_url": "https://ps.acme.example/missions", // byo: receives each pending mission
-  "approval_policy": "human"                  // human | judge_advises_human | judge_auto_within_envelope
+  "api_hosts": ["api.booking.example"],       // egress allowlist; egress signs requests to these
+  "person_server_url": "https://ps.acme.example", // the agent token's `ps`: where egress exchanges resource tokens
+  "application_id": "…"                       // the Agent Provider client the agent token names
 }
 ```
 
