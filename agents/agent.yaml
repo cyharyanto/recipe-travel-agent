@@ -1,31 +1,15 @@
 name: agent
-description: Travel agent that books trips on a customer's behalf
+description: Flight Sector travel agent that books company travel for employees from a Slack DM
 ai:
   model: anthropic/claude-sonnet-4-6
   thinking_level: low
 tools:
   - read
-  - bash
-  - write
+  - search_offers
+  - book_item
+  - channels
 skills: []
 subagents: []
 system_instructions:
   mode: append
   content: ""
-# Connector access will be declared here once the Recipes runtime loader
-# supports a `connectors:` key (docs/design/connectors-aauth-b2b2c.md §18). Kept
-# commented: the runtime loader is strict and SKIPS the whole agent.yaml on any
-# unknown key, so an uncommented block silently disables this agent. The connector
-# definition lives org-side in the CP; this only references + scopes connectors.
-# connectors:
-#   booking:
-#     subject: person          # act on the customer's behalf
-#     scopes: [booking.reserve] # subset of the connector's scopes this agent needs
-#   gmail:
-#     subject: person
-#     scopes: [gmail.send]
-#   stripe:                    # payment step-up: a second, higher-stakes approval
-#     subject: person
-#     scopes: [charge]
-# Deterministic rails for these connectors live in policies/*.cedar (Cedar),
-# evaluated by the platform on every token request — see policies/README.md.
