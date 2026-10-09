@@ -22,19 +22,18 @@ AAuth agent, §18 the `connectors:` recipe block).
   it. `pending` is a first-class state, not an error: the agent is told, and
   the chat resumes when the manager decides.
 
-## The full scope — four layers
+## The full scope
 
-A person-authorized action spans four layers. The connector is the standing
-capability, the recipe references it, the recipe's **policies** are the
-deterministic rails around it, and the **mission** is the per-action envelope a
-human approves at runtime. Config defines the *ceiling*; the mission is the
-*instance*.
+A booking passes four layers. The connector is the standing capability, the
+recipe references it, the recipe's **policies** are the builder's deterministic
+rails, and the traveller's **company** decides each booking through its Person
+Server. Each layer can only narrow what the next one sees.
 
 ### 1. Connector — the org-side definition (Control Plane)
 
 Created once, org-side (the "Add connector" UI / `POST /v1/connectors`). This is
-the security boundary: which provider, which action scopes, who hosts approval,
-and how missions are decided.
+the security boundary: which provider, which action scopes, and which Person Server
+speaks for the people it serves.
 
 ```jsonc
 {
@@ -45,7 +44,10 @@ and how missions are decided.
   "scopes": ["booking.reserve"],              // the action classes this connector allows
   "api_hosts": ["api.booking.example"],       // egress allowlist; egress signs requests to these
   "person_server_url": "https://ps.acme.example", // the agent token's `ps`: where egress exchanges resource tokens
-  "application_id": "…"                       // the Agent Provider client the agent token names
+  "application_id": "…",                      // the Agent Provider client the agent token names
+  "policy_entities": [                        // what policies/ may read about each customer company
+    { "uid": { "type": "Company", "id": "acme" }, "attrs": { "business_min_level": 5 }, "parents": [] }
+  ]
 }
 ```
 
@@ -72,67 +74,50 @@ connectors:
     scopes: [charge]
 ```
 
-### 3. Policies — deterministic rails (`policies/*.cedar`)
+### 3. Policies — the builder's rails (`policies/`)
 
 [Cedar](https://www.cedarpolicy.com/) policies, versioned with the agent's code,
-evaluated by the platform on **every token request**. Missions are what a human
-approves; policies are the hard rail *around* the approval — deterministic,
-immune to prompt injection or an over-persuaded approver:
+evaluated in the platform's egress on **every request** to a connector host,
+before the traveller's company is asked
+(`introspection-cloud` `docs/design/connectors-aauth-b2b2c.md` §19):
 
 ```cedar
-// policies/payments.cedar — holds regardless of what was approved upstream
-permit (principal, action == Action::"connector:use", resource == Connector::"stripe")
-when {
-  context.mission.granted &&
-  context.mission.subject == "person" &&
-  context.mission has amount_cents && context.mission.amount_cents <= 50000 &&
-  context.mission has single_use && context.mission.single_use
+// policies/travel.cedar
+@id("business-by-seniority")
+@reason("business class on the company's account needs the company's seniority, on a leg of six hours or more")
+forbid (principal, action == Action::"booking.reserve", resource)
+when { resource has cabin && resource.cabin == "business" && resource.payer == "company" }
+unless {
+  principal has level && principal has company &&
+  principal.level >= principal.company.business_min_level &&
+  resource has block_minutes && resource.block_minutes >= 360
 };
 ```
 
-If `policies/` exists, connector use is **default-deny**: only what a policy
-permits can mint. Each layer only narrows the previous one (org config ∩ recipe
-policies ∩ mission). Loosening a rail requires a commit + redeploy — the review
-gate. See [`policies/README.md`](policies/README.md) for validation.
+A deny ends the request with its reason; an allow only lets it on to the
+company's Person Server, which still decides. The same rule answers per person:
+`level` is set by an org owner on the member, and `company` is an entity the
+booking connector carries. See [`policies/README.md`](policies/README.md).
 
-### 4. Mission — the per-action envelope (runtime)
+### 4. The company decides — AAuth (runtime)
 
-The mission is **not configuration**: its envelope (which offer, the real amount)
-is specific to each booking, so the tool declares it on the request. It maps 1:1
-to `MissionConstraints`. [`extensions/booking.js`](extensions/booking.js) sends it
-in an `Introspection-Mission` header, the only approval-aware line in the recipe:
+The tool sends the offer's signed quote, purpose and payer; nothing in it knows
+about AAuth. What happens next is the platform's and the company's
+(`introspection-cloud` `docs/design/connectors-aauth-b2b2c.md` §12.3):
 
-```jsonc
-// book_item → POST /v1/reserve, with
-// Introspection-Mission: {"action": "hotel.reserve", "requested_permissions": {
-//   "host": "api.booking.example", "resource": "<offer_id>",
-//   "limits": {"amount_max": 1680, "nightly_rate": 420, "count": 1}}}
-```
-
-What happens next is the platform's, not the recipe's
-(`introspection-cloud` `docs/design/connectors-aauth-b2b2c.md` §12.2):
-
-1. The egress mission gate answers the reservation `428 mission-required`; the
-   provider token is never injected.
-2. The runtime reports the declared mission. The control plane opens it and hands
-   it to the company's own Person Server (the connector's `person_server_url`),
-   and the tool result tells the agent the booking was sent for approval.
-3. The Person Server applies its company's policy: within the nightly cap it
-   approves at once; over it, it asks the traveller's manager.
-4. When it is decided, the agent is told in the same DM. It retries, the gate
-   lets that one request through with the injected token, and the booking lands.
+1. The egress signs the request (RFC 9421) and presents the session's agent token.
+2. The provider answers `401` with a resource token naming the exact quote.
+3. The egress takes it to the company's Person Server, which applies its own
+   policy: within it, an auth token at once; over it, `202` while it asks the
+   traveller's manager.
+4. When it is decided, the agent is told in the same DM and books again.
 
 ## Status
 
-- **Live on the platform branch:** the mission gate, opening missions for a
-  sandbox session, the hand-off to a `byo` Person Server, and the resume.
+- **Live on the platform branch:** the Agent Provider, egress signing and token
+  exchange, waiting on a `202`, and the policy gate.
 - **Example:** `introspection-js-sdk` `examples/aauth-travel` runs the booking
   provider and Acme's Person Server.
-- **Policies:** `policies/*.cedar` validate in CI; nothing evaluates them at
-  runtime. The company's policy lives in its Person Server.
-- **What the gate binds:** an approval lets through one request, declaring the
-  approved `resource` (the offer id). It does not read the request body, so it
-  trusts the tool to declare the offer it books, as `book_item` does.
 
 ## Register it as a runtime
 
@@ -147,7 +132,7 @@ until this repo is pushed + linked to the project; enable an explicit run with
 ```text
 .introspection/travel-agent.yaml   # the GitOps manifest Introspection discovers
 agents/agent.yaml                  # the runnable travel agent
-extensions/booking.js              # search_offers + book_item, declaring each booking's mission
-policies/                          # Cedar policy rails (schema + booking/payments)
+extensions/booking.js              # search_offers + book_item, plain HTTPS calls
+policies/                          # Cedar rails: schema, travel rules, connector routes
 SYSTEM.md                          # the base system prompt
 ```
