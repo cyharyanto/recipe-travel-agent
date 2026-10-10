@@ -22,6 +22,22 @@ A route can ask for the session's approved AAuth mission as Cedar context
 (`context: [mission]` gives `context.mission = {s256, resources}`).
 `missionless-booking` uses it to refuse any booking outside an approved trip.
 
+A route can also name a mission judge in `judges/` (`judge: booking`). Before
+Cedar decides, the platform asks TypeSafe's Jev the judge's yes-or-no questions
+about the request, against the traveller's own words, which the data plane
+recorded and the agent can neither write nor see. Each answer reaches Cedar as
+a percentage in `context.judgement` (`context: [judgement]`), and is absent
+when Jev cannot answer, so a rule that requires one fails closed:
+
+| Judge | Asked on | Rules that read it |
+| --- | --- | --- |
+| `judges/booking.yaml` | every reservation | `asked-for` (`requested` >= 60), `personal-is-the-travellers` (`personal` >= 70) |
+| `judges/mission-proposal.yaml` | the trip the agent proposes to the Person Server | `proposed-as-asked` (`requested` >= 60) |
+
+A judge's `attrs` names the resource attributes Jev sees. The booking judge
+names only what the provider signed in its quote, never the agent's claimed
+`purpose` or `payer`.
+
 The same policy answers differently per person: the principal's `level` comes
 from attributes an org owner sets on the member (`PATCH /v1/members/{id}`,
 `policy_attributes`), and their `company` from entities the booking connector
