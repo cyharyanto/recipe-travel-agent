@@ -125,6 +125,24 @@ about AAuth. What happens next is the platform's and the company's
 6. `complete_trip` proposes the trip done; the traveller accepts, and the
    mission ends.
 
+## Finding flights: Browserbase's MCP
+
+Flights are found on the open web, then quoted by the booking provider. The
+recipe declares Browserbase's hosted MCP in `package.json#pi.mcp` (`start`,
+`navigate`, `extract`, `observe`, `end`; never `act`), and the agent uses
+`start`, `navigate`, `extract` and `end` to read a Google Flights search.
+`quote_flight` then asks the booking provider for its own offer on the flight it
+picked, by airline or flight number, so the price proposed and booked is always
+the provider's signed fare, never the page's.
+
+The server is required, so a project binds it before a session starts: an `mcp`
+endpoint with `mcp_server_id: browserbase`.
+
+| Binding | URL | Credential |
+| --- | --- | --- |
+| Real | `https://mcp.browserbase.com/mcp` | header `Authorization: Bearer ${BROWSERBASE_API_KEY}`, a project credential |
+| Mock | `https://browserbase.flightsector.localhost/mcp` (in `introspection-js-sdk` `examples/aauth-travel`) | any bearer; it answers like the real server for the recorded SFO⇄SYD searches, and lists the booking provider's flights for other routes |
+
 ## Status
 
 - **Live on the platform branch:** the Agent Provider, egress signing and token
@@ -145,7 +163,7 @@ until this repo is pushed + linked to the project; enable an explicit run with
 ```text
 .introspection/travel-agent.yaml   # the GitOps manifest Introspection discovers
 agents/agent.yaml                  # the runnable travel agent
-extensions/booking.js              # search_offers + book_item, plain HTTPS calls
+extensions/booking.js              # search_offers, quote_flight, book_item and the mission tools: plain HTTPS calls
 policies/                          # Cedar rails: schema, travel rules, connector routes
 SYSTEM.md                          # the base system prompt
 ```
