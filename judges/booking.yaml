@@ -5,7 +5,7 @@ name: booking
 type: mission
 description: Is this booking what the traveller asked for, and is it personal?
 # Only what the provider signed: never the agent's claimed purpose or payer.
-attrs: [kind, name, city, flight, from, to, depart, check_in, check_out, nights, cabin, total_cents]
+attributes: [kind, name, city, flight, from, to, depart, check_in, check_out, nights, cabin, total_cents]
 questions:
   requested:
     instructions: >

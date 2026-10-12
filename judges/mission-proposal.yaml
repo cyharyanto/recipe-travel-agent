@@ -2,7 +2,7 @@
 name: mission-proposal
 type: mission
 description: Is the proposed trip the one the traveller asked for?
-attrs: [description]
+attributes: [description]
 questions:
   requested:
     instructions: >
