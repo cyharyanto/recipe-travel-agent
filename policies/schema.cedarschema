@@ -43,7 +43,7 @@ entity Booking {
 };
 
 // The trip the agent proposes, as its Person Server would see it.
-entity Mission {
+entity TripProposal {
   description?: String,
 };
 
@@ -58,4 +58,4 @@ type Mission = { s256: String, resources: Set<String> };
 action "booking.search" appliesTo { principal: [Person], resource: [Search], context: {} };
 action "booking.quote" appliesTo { principal: [Person], resource: [Search], context: {} };
 action "booking.reserve" appliesTo { principal: [Person], resource: [Booking], context: { mission?: Mission, judgement?: BookingJudgement } };
-action "mission.propose" appliesTo { principal: [Person], resource: [Mission], context: { judgement?: MissionJudgement } };
+action "mission.propose" appliesTo { principal: [Person], resource: [TripProposal], context: { judgement?: MissionJudgement } };

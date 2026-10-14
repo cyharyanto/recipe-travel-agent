@@ -39,6 +39,6 @@ person-server:
     context: [judgement]
     judge: mission-proposal
     resource:
-      type: Mission
+      type: TripProposal
       attribute_map:
         description: /description
