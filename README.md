@@ -1,89 +1,74 @@
 # Travel Agent Recipe
 
-A Git-backed Introspection recipe: **Flight Sector's travel agent**, which books
-work travel for a company's employees from a Slack DM, through an `aauth`
-**connector**. The booking provider is a native [AAuth](https://github.com/dickhardt/AAuth)
-resource and the employee's company runs the Person Server that speaks for
-them. Each trip is an AAuth **mission**: the manager approves it once, budget
-and all; a booking within it goes through at once, and one over what is left
-waits for the manager.
+An [Introspection](https://introspection.dev) recipe: **Flight Sector's travel
+agent**, which books work travel for another company's employees. The booking
+provider is a native [AAuth](https://github.com/dickhardt/AAuth) resource, and
+the traveller's company has a Person Server that speaks for them. Each trip is
+an AAuth **mission**: the manager approves it once, budget and all; a booking
+within it goes through at once, and one over what is left waits for the
+manager.
 
-Design: `introspection-cloud/docs/design/connectors-aauth-b2b2c.md` (§12.2 the
-AAuth agent, §12.3 missions, §18 the `connectors:` recipe block, §19 the rails).
+To run it end to end, with the booking provider and the company's approval
+page, use the [`aauth-travel` example](https://github.com/introspection-org/introspection-js-sdk/tree/main/examples/aauth-travel)
+in the Introspection JS SDK.
 
 ## What this demonstrates
 
 - An agent that acts **on behalf of a person**, never on its own authority.
-- **No credential in the sandbox**: the platform is the Agent Provider. Egress
-  signs each request (RFC 9421) with the session's key and presents the best
-  token it holds; the provider answers with a resource token, and egress
-  exchanges it at the company's Person Server for an auth token.
+- **No credential in the sandbox**: the platform is the Agent Provider. Its
+  egress signs each request (RFC 9421) with the session's key and presents the
+  best token it holds; the provider answers with a resource token, and the
+  egress exchanges it at the company's Person Server for an auth token.
 - **A trip is a mission**: `propose_trip` proposes the whole trip, with its
   budget, before anything is booked; `complete_trip` ends it. The mission and
   its tokens stay in the egress; the agent holds only its `s256`.
-- **The company decides**: Acme's Person Server weighs each booking against
-  what is left of the trip's budget, and asks the manager when it is over.
+- **The company decides**: its Person Server weighs each booking against what
+  is left of the trip's budget, and asks the manager when it is over.
   `pending` is a first-class state, not an error: the agent is told, and the
-  chat resumes when the manager decides.
+  conversation resumes when the manager decides.
 
-## The full scope
+## The four layers
 
-A booking passes four layers. The connector is the standing capability, the
-recipe references it, the recipe's **policies** are the builder's deterministic
-rails, and the traveller's **company** decides each booking through its Person
-Server. Each layer can only narrow what the next one sees.
+A booking passes four layers, and each can only narrow what the next one sees:
+the connector is the standing capability, the recipe uses it, the recipe's
+**policies** are the builder's deterministic rails, and the traveller's
+**company** decides each booking through its Person Server.
 
-### 1. Connector — the org-side definition (Control Plane)
+### 1. Connector: the organization's definition
 
-Created once, org-side (the "Add connector" UI / `POST /v1/connectors`). This is
-the security boundary: which provider, which action scopes, and which Person Server
+Created once in the project, for example with the `introspection` CLI
+(`introspection connectors create @booking.json`). It is the security boundary:
+which provider, which hosts the egress signs for, and which Person Server
 speaks for the people it serves.
 
 ```jsonc
 {
-  "name": "Booking",
-  "provider": "booking",
+  "name": "Flight Sector booking",
+  "provider": "flightsector",
   "auth_mode": "aauth",
-  "subject_scope": "person",
-  "scopes": ["booking.reserve"],              // the action classes this connector allows
-  "api_hosts": ["api.booking.example"],       // egress allowlist; egress signs requests to these
-  "person_server_url": "https://ps.acme.example", // the agent token's `ps`: where egress exchanges resource tokens
-  "application_id": "…",                      // the Agent Provider client the agent token names
-  "policy_entities": [                        // what policies/ may read about each customer company
+  "api_hosts": ["api.booking.example"],            // the egress signs requests to these
+  "person_server_url": "https://ps.acme.example",  // where the egress exchanges resource tokens
+  "application_id": "…",                           // the application whose client id is the agent's identity
+  "policy_entities": [                             // what policies/ may read about each customer company
     { "uid": { "type": "Company", "id": "acme" }, "attrs": { "business_min_level": 5 }, "parents": [] }
   ]
 }
 ```
 
-`approval_policy` lives **here, not in the recipe** — a recipe author cannot set
-the org's security boundary. The judge is an approver rung *under* a
-human-granted policy, never the boundary itself.
+The recipe cannot set any of this: a recipe author does not decide the
+organization's security boundary.
 
-### 2. Recipe — the agent references + scopes the connector
+### 2. Recipe: the agent
 
-Planned: `agents/agent.yaml` will name connectors and narrow scopes (the same
-split as MCP servers — the definition is org-side). The recipe loader rejects
-unknown keys today, so this block is not in the file yet:
+`agents/agent.yaml` and `extensions/booking.js`. The tools make plain HTTPS
+calls to `https://api.booking.example`; nothing in them holds a credential or
+knows about AAuth.
 
-```yaml
-connectors:
-  booking:
-    subject: person          # act on the customer's behalf
-    scopes: [booking.reserve] # subset of the connector's scopes this agent needs
-  gmail:
-    subject: person
-    scopes: [gmail.send]
-  stripe: # payment step-up: a second, higher-stakes approval
-    subject: person
-    scopes: [charge]
-```
+### 3. Policies: the builder's rails (`policies/`)
 
-### 3. Policies — the builder's rails (`policies/`)
-
-[Cedar](https://www.cedarpolicy.com/) policies, versioned with the agent's code,
-evaluated in the platform's egress on **every request** to a connector host,
-before the traveller's company is asked
-(`introspection-cloud` `docs/design/connectors-aauth-b2b2c.md` §19):
+[Cedar](https://www.cedarpolicy.com/) policies, versioned with the agent's
+code, evaluated in the platform's egress on **every request** to a connector
+host, before the traveller's company is asked:
 
 ```cedar
 // policies/travel.cedar
@@ -104,15 +89,13 @@ unless {
 ```
 
 A deny ends the request with its reason; an allow only lets it on to the
-company's Person Server, which still decides. The same rule answers per person:
-`level` is set by an org owner on the member, and `company` is an entity the
-booking connector carries. See [`policies/README.md`](policies/README.md).
+company's Person Server, which still decides. The same rule answers per
+person: `level` is set by an organization owner on the traveller's member
+(`introspection members update user:{id} --policy-attributes …`), and
+`company` is an entity the booking connector carries. See
+[`policies/README.md`](policies/README.md).
 
-### 4. The company decides — AAuth (runtime)
-
-The tool sends the offer's signed quote, purpose and payer; nothing in it knows
-about AAuth. What happens next is the platform's and the company's
-(`introspection-cloud` `docs/design/connectors-aauth-b2b2c.md` §12.2–§12.3):
+### 4. The company decides: AAuth
 
 1. `propose_trip` posts the trip to `https://person-server.aauth/mission`; the
    egress takes it to the company's Person Server, and the manager approves it.
@@ -121,7 +104,8 @@ about AAuth. What happens next is the platform's and the company's
 3. The provider answers `401` with a resource token naming this one booking.
 4. The egress takes it to the Person Server: within the trip's budget, an auth
    token at once; over what is left, `202` while it asks the manager.
-5. When it is decided, the agent is told in the same DM and books again.
+5. When it is decided, the agent is told in the same conversation and books
+   again.
 6. `complete_trip` proposes the trip done; the traveller accepts, and the
    mission ends.
 
@@ -132,8 +116,8 @@ recipe declares Browserbase's hosted MCP in `package.json#pi.mcp` (`start`,
 `navigate`, `extract`, `observe`, `end`; never `act`), and the agent uses
 `start`, `navigate`, `extract` and `end` to read a Google Flights search.
 `quote_flight` then asks the booking provider for its own offer on the flight it
-picked, by airline or flight number, so the price proposed and booked is always
-the provider's signed fare, never the page's.
+picked, so the price proposed and booked is always the provider's signed fare,
+never the page's.
 
 The server is required, so a project binds it before a session starts: an `mcp`
 endpoint with `mcp_server_id: browserbase`.
@@ -141,27 +125,32 @@ endpoint with `mcp_server_id: browserbase`.
 | Binding | URL | Credential |
 | --- | --- | --- |
 | Real | `https://mcp.browserbase.com/mcp` | header `Authorization: Bearer ${BROWSERBASE_API_KEY}`, a project credential |
-| Mock | `https://browserbase.flightsector.localhost/mcp` (in `introspection-js-sdk` `examples/aauth-travel`) | any bearer; it answers like the real server for the recorded SFO⇄SYD searches, and lists the booking provider's flights for other routes |
+| Mock | the `aauth-travel` example's `/mcp` | any bearer; it answers like the real server for recorded SFO⇄SYD searches, and lists the booking provider's flights for other routes |
 
-## Status
+## Run it
 
-- **Live on the platform branch:** the Agent Provider, egress signing and token
-  exchange, AAuth missions, waiting on a `202`, and the policy gate.
-- **Example:** `introspection-js-sdk` `examples/aauth-travel` runs the booking
-  provider and Acme's Person Server.
+The `aauth-travel` example sets your project up with the `introspection` CLI,
+including this recipe as a runtime:
 
-## Register it as a runtime
+```bash
+introspection login
+pnpm dev:public                  # in examples/aauth-travel
+pnpm run introspection:setup
+```
 
-Register alongside `coding-agent`: **New runtime → From existing recipe →** pick
-this repo/branch → `.introspection/travel-agent.yaml`. Local dev seeds it via
-`make seed-travel-agent` (wired into `make dev-partner`). It skips gracefully
-until this repo is pushed + linked to the project; enable an explicit run with
-`SEED_TRAVEL_AGENT_RUNTIME=true make seed-runtimes`.
+Or create the runtime yourself, from a repository Introspection hosts:
+
+```bash
+introspection repositories add travel-agent --provider introspection \
+  --template https://github.com/introspection-org/recipe-travel-agent.git
+git clone "$(introspection repositories list -o json --query "[?slug=='travel-agent'].url | [0]")" travel-agent
+cd travel-agent && introspection runtimes create
+```
 
 ## Layout
 
 ```text
-.introspection/travel-agent.yaml   # the GitOps manifest Introspection discovers
+.introspection/travel-agent.yaml   # the manifest Introspection discovers
 agents/agent.yaml                  # the runnable travel agent
 extensions/booking.js              # search_offers, quote_flight, book_item and the mission tools: plain HTTPS calls
 policies/                          # Cedar rails: schema, travel rules, connector routes

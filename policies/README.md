@@ -2,8 +2,7 @@
 
 `policies/` holds [Cedar](https://www.cedarpolicy.com/) policies that the
 platform evaluates in its egress on every request to a connector host, before
-the traveller's company is asked (introspection-cloud
-`docs/design/connectors-aauth-b2b2c.md` §19).
+the traveller's company is asked.
 
 | File | What it is |
 | --- | --- |

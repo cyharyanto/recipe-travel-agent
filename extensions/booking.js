@@ -4,7 +4,7 @@
 // company approves it once. Bookings then go to the `aauth` booking connector;
 // egress signs them and gets each auth token under the mission. Nothing here
 // holds a credential; anything awaiting a person comes back as 428, and the
-// runtime reports it (introspection-cloud connectors-aauth-b2b2c.md §12.3).
+// runtime reports it.
 import { Type } from "typebox";
 
 const BOOKING_API_URL = (process.env.BOOKING_API_URL ?? "https://api.booking.example").replace(/\/$/, "");

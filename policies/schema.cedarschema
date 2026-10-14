@@ -1,5 +1,4 @@
-// What the platform's egress policy gate gives these policies
-// (introspection-cloud docs/design/connectors-aauth-b2b2c.md §19).
+// What the platform's egress policy gate gives these policies.
 //
 // The principal is the person the session acts for: their attributes are set
 // by an org owner on the member, and their company is an entity the booking
