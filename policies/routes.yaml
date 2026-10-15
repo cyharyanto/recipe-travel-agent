@@ -42,3 +42,11 @@ person-server:
       type: TripProposal
       attribute_map:
         description: /description
+  - method: POST
+    path: /mission/*
+    action: mission.complete
+    context: [mission]
+    resource:
+      type: TripCompletion
+      attribute_map:
+        summary: /summary

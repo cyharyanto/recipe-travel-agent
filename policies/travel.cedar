@@ -52,6 +52,9 @@ when {
 @id("propose")
 permit (principal, action == Action::"mission.propose", resource);
 
+@id("complete")
+permit (principal, action == Action::"mission.complete", resource);
+
 @id("proposed-as-asked")
 @reason("the proposed trip is not the one the traveller asked for: propose their destination, dates and budget")
 forbid (principal, action == Action::"mission.propose", resource)
