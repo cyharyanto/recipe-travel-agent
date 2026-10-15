@@ -36,7 +36,7 @@ unless {
 forbid (principal, action == Action::"booking.reserve", resource)
 unless {
   context has judgement && context.judgement has requested &&
-  context.judgement.requested >= 60
+  context.judgement.requested >= 50
 };
 
 @id("personal-is-the-travellers")

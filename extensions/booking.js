@@ -33,6 +33,19 @@ function result(res) {
 
 export function registerBookingTools(pi) {
   pi.registerTool({
+    name: "today",
+    label: "Today's date",
+    description: "Today's date and weekday, to work out a date the traveller gives relative to now, such as \"next Monday\".",
+    parameters: Type.Object({}),
+    async execute() {
+      const now = new Date();
+      const date = now.toISOString().slice(0, 10);
+      const weekday = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+      return { content: [{ type: "text", text: `${weekday} ${date}` }], details: { date, weekday } };
+    },
+  });
+
+  pi.registerTool({
     name: "propose_trip",
     label: "Propose the trip",
     description:
