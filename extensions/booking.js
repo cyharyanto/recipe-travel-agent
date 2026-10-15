@@ -44,7 +44,7 @@ function result(res) {
     content: [{ type: "text", text }],
     details: { status: res.status },
     // A 428 is the approval steer, which carries what to tell the person.
-    isError: res.status >= 400 && res.status !== 428,
+    isError: res.status === 0 || (res.status >= 400 && res.status !== 428),
   };
 }
 
