@@ -57,5 +57,5 @@ permit (principal, action == Action::"mission.propose", resource);
 forbid (principal, action == Action::"mission.propose", resource)
 unless {
   context has judgement && context.judgement has requested &&
-  context.judgement.requested >= 60
+  context.judgement.requested >= 50
 };
