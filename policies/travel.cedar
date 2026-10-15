@@ -32,6 +32,20 @@ unless {
   resource has block_minutes && resource.block_minutes >= 360
 };
 
+@id("over-seniority-limit")
+@reason("this booking costs more than the traveller's seniority allows on the company's account")
+forbid (principal, action == Action::"booking.reserve", resource)
+when {
+  resource.payer == "company" && resource has total_cents &&
+  principal has level && principal has company &&
+  principal.company has booking_limit_cents &&
+  principal.company has senior_booking_limit_cents &&
+  resource.total_cents >
+    (if principal.level >= principal.company.business_min_level
+     then principal.company.senior_booking_limit_cents
+     else principal.company.booking_limit_cents)
+};
+
 @id("asked-for")
 @reason("Jev could not confirm this booking is what the traveller asked for")
 forbid (principal, action == Action::"booking.reserve", resource)

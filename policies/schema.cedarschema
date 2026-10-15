@@ -12,6 +12,10 @@
 entity Company {
   // The least seniority that may fly business class on the company's account.
   business_min_level: Long,
+  // The most one booking on the company's account may cost, below that
+  // seniority and at or above it.
+  booking_limit_cents?: Long,
+  senior_booking_limit_cents?: Long,
 };
 
 entity Person {
