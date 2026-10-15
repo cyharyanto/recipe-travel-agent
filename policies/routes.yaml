@@ -7,13 +7,20 @@ booking:
     resource:
       type: Search
   - method: POST
+    path: /v1/quote
+    action: booking.quote
+    resource:
+      type: Search
+  - method: POST
     path: /v1/reserve
     action: booking.reserve
-    # The session's approved mission, as context.mission.
-    context: [mission]
+    # The session's approved mission, as context.mission, and the answers of
+    # judges/booking.yaml, as context.judgement.
+    context: [mission, judgement]
+    judge: booking
     resource:
       type: Booking
-      attrs:
+      attribute_map:
         offer_id: /offer_id
         purpose: /purpose
         payer: /payer
@@ -21,4 +28,17 @@ booking:
       # signed, so the agent cannot alter these.
       claims:
         from: /quote
-        attrs: [kind, cabin, block_minutes, total_cents]
+        attributes: [kind, name, city, flight, from, to, depart, check_in, check_out, nights, cabin, block_minutes, total_cents]
+
+# The trip the agent proposes to the traveller's Person Server, which the
+# egress answers itself: Jev checks it against what the traveller asked for.
+person-server:
+  - method: POST
+    path: /mission
+    action: mission.propose
+    context: [judgement]
+    judge: mission-proposal
+    resource:
+      type: TripProposal
+      attribute_map:
+        description: /description
