@@ -128,7 +128,7 @@ export function registerBookingTools(pi) {
       date: Type.String({ description: "YYYY-MM-DD" }),
       carrier: Type.Optional(Type.String({ description: "Airline as the search showed it, e.g. Qantas" })),
       flight: Type.Optional(Type.String({ description: "Flight number, when the search showed one, e.g. QF74" })),
-      cabin: Type.Optional(Type.String({ description: "economy, premium_economy or business; first is never booked" })),
+      cabin: Type.Optional(Type.String({ description: "economy, premium_economy, business or first" })),
     }),
     async execute(_toolCallId, params, signal) {
       return result(await call("/v1/quote", params, signal));
