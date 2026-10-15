@@ -21,6 +21,11 @@ entity Person {
 
 entity Search;
 
+// The flight the agent asks the provider to quote.
+entity Quote {
+  cabin?: String,
+};
+
 entity Booking {
   offer_id: String,
   purpose: String,
@@ -60,7 +65,7 @@ type MissionJudgement = { requested?: Long };
 type Mission = { s256: String, resources: Set<String> };
 
 action "booking.search" appliesTo { principal: [Person], resource: [Search], context: {} };
-action "booking.quote" appliesTo { principal: [Person], resource: [Search], context: {} };
+action "booking.quote" appliesTo { principal: [Person], resource: [Quote], context: {} };
 action "booking.reserve" appliesTo { principal: [Person], resource: [Booking], context: { mission?: Mission, judgement?: BookingJudgement } };
 action "mission.propose" appliesTo { principal: [Person], resource: [TripProposal], context: { judgement?: MissionJudgement } };
 action "mission.complete" appliesTo { principal: [Person], resource: [TripCompletion], context: { mission?: Mission } };

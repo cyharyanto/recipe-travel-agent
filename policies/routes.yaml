@@ -10,7 +10,9 @@ booking:
     path: /v1/quote
     action: booking.quote
     resource:
-      type: Search
+      type: Quote
+      attribute_map:
+        cabin: /cabin
   - method: POST
     path: /v1/reserve
     action: booking.reserve

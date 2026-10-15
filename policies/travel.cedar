@@ -16,9 +16,10 @@ permit (principal, action == Action::"booking.reserve", resource);
 forbid (principal, action == Action::"booking.reserve", resource)
 unless { context has mission };
 
+// Refused at the quote too, so a trip in first is never proposed to a manager.
 @id("no-first-class")
-@reason("first class is never booked")
-forbid (principal, action == Action::"booking.reserve", resource)
+@reason("first class is never booked: quote business or economy instead")
+forbid (principal, action in [Action::"booking.quote", Action::"booking.reserve"], resource)
 when { resource has cabin && resource.cabin == "first" };
 
 @id("business-by-seniority")
