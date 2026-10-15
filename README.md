@@ -50,7 +50,7 @@ speaks for the people it serves.
   "person_server_url": "https://ps.acme.example",  // where the egress exchanges resource tokens
   "application_id": "…",                           // the application whose client id is the agent's identity
   "policy_entities": [                             // what policies/ may read about each customer company
-    { "uid": { "type": "Company", "id": "acme" }, "attrs": { "business_min_level": 5, "booking_limit_cents": 100000, "senior_booking_limit_cents": 250000 }, "parents": [] }
+    { "uid": { "type": "Company", "id": "acme" }, "attrs": { "business_min_level": 5, "booking_limit_cents": 200000, "senior_booking_limit_cents": 800000 }, "parents": [] }
   ]
 }
 ```
