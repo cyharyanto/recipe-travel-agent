@@ -64,6 +64,12 @@ organization's security boundary.
 calls to `https://api.booking.example`; nothing in them holds a credential or
 knows about AAuth.
 
+That host is a placeholder: it resolves nowhere on its own. The project's
+booking connector lists it in `api_hosts`, and its `aauth_upstream` names the
+booking provider the egress actually sends to, signing for `aauth_resource`.
+So the agent books only with that connector set up and a live AAuth booking
+provider behind it, which the `aauth-travel` example runs and wires up.
+
 ### 3. Policies: the builder's rails (`policies/`)
 
 [Cedar](https://www.cedarpolicy.com/) policies, versioned with the agent's
