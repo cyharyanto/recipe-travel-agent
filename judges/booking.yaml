@@ -16,7 +16,10 @@ questions:
       "true": The same destination and dates, in a cabin and price they would expect.
       "false": Another place, other dates, or something they never asked for.
   personal:
-    instructions: Did the traveller describe the part of the trip this booking is for as personal?
+    instructions: >
+      Did the traveller describe the part of the trip this booking is for as
+      personal? Judge only this booking's own destination and dates against
+      what they said about that part: a trip can mix work and personal legs.
     criteria:
-      "true": A holiday, a weekend away or visiting family.
-      "false": Work, or a part of the trip they did not call personal.
+      "true": This booking's destination and dates are the part they called a holiday, a weekend away or visiting family.
+      "false": This booking is for a part they described as work, or did not call personal, even when another part of the same trip is personal.

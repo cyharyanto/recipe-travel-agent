@@ -10,24 +10,41 @@ import { Type } from "typebox";
 const BOOKING_API_URL = (process.env.BOOKING_API_URL ?? "https://api.booking.example").replace(/\/$/, "");
 const PERSON_SERVER_URL = "https://person-server.aauth";
 const REQUEST_TIMEOUT_MS = 20_000;
+// A service that is down does not come back for a retry a second later, so
+// after this many failures in a row the agent is told to stop.
+const MAX_FAILURES_IN_A_ROW = 2;
+let failuresInARow = 0;
 
 async function call(path, body, signal, base = BOOKING_API_URL) {
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-  const response = await fetch(`${base}${path}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-  });
-  return { status: response.status, text: await response.text() };
+  try {
+    const response = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    });
+    return { status: response.status, text: await response.text() };
+  } catch (err) {
+    // A stopped run ends here; anything else is a service that did not answer.
+    if (signal?.aborted) throw err;
+    return { status: 0, text: timeout.aborted ? "timed out" : String(err?.message ?? err) };
+  }
 }
 
 function result(res) {
+  const unavailable = res.status === 0 || res.status === 401 || res.status >= 500;
+  failuresInARow = unavailable ? failuresInARow + 1 : 0;
+  let text = res.status === 0 ? `No response: ${res.text}` : `HTTP ${res.status}\n${res.text}`;
+  if (failuresInARow >= MAX_FAILURES_IN_A_ROW)
+    text +=
+      `\n\n${failuresInARow} failures in a row: the service is not answering. Do not retry. ` +
+      "Tell the employee what is not working and what is already booked, and that they can ask again later. Then stop.";
   return {
-    content: [{ type: "text", text: `HTTP ${res.status}\n${res.text}` }],
+    content: [{ type: "text", text }],
     details: { status: res.status },
     // A 428 is the approval steer, which carries what to tell the person.
-    isError: res.status >= 400 && res.status !== 428,
+    isError: res.status === 0 || (res.status >= 400 && res.status !== 428),
   };
 }
 
@@ -111,7 +128,7 @@ export function registerBookingTools(pi) {
       date: Type.String({ description: "YYYY-MM-DD" }),
       carrier: Type.Optional(Type.String({ description: "Airline as the search showed it, e.g. Qantas" })),
       flight: Type.Optional(Type.String({ description: "Flight number, when the search showed one, e.g. QF74" })),
-      cabin: Type.Optional(Type.String({ description: "economy, premium_economy or business; first is never booked" })),
+      cabin: Type.Optional(Type.String({ description: "economy, premium_economy, business or first" })),
     }),
     async execute(_toolCallId, params, signal) {
       return result(await call("/v1/quote", params, signal));
