@@ -16,9 +16,10 @@ permit (principal, action == Action::"booking.reserve", resource);
 forbid (principal, action == Action::"booking.reserve", resource)
 unless { context has mission };
 
+// Refused at the quote too, so a trip in first is never proposed to a manager.
 @id("no-first-class")
-@reason("first class is never booked")
-forbid (principal, action == Action::"booking.reserve", resource)
+@reason("first class is never booked: quote business or economy instead")
+forbid (principal, action in [Action::"booking.quote", Action::"booking.reserve"], resource)
 when { resource has cabin && resource.cabin == "first" };
 
 @id("business-by-seniority")
@@ -36,7 +37,7 @@ unless {
 forbid (principal, action == Action::"booking.reserve", resource)
 unless {
   context has judgement && context.judgement has requested &&
-  context.judgement.requested >= 60
+  context.judgement.requested >= 50
 };
 
 @id("personal-is-the-travellers")
@@ -52,10 +53,13 @@ when {
 @id("propose")
 permit (principal, action == Action::"mission.propose", resource);
 
+@id("complete")
+permit (principal, action == Action::"mission.complete", resource);
+
 @id("proposed-as-asked")
 @reason("the proposed trip is not the one the traveller asked for: propose their destination, dates and budget")
 forbid (principal, action == Action::"mission.propose", resource)
 unless {
   context has judgement && context.judgement has requested &&
-  context.judgement.requested >= 60
+  context.judgement.requested >= 50
 };

@@ -30,8 +30,8 @@ when Jev cannot answer, so a rule that requires one fails closed:
 
 | Judge | Asked on | Rules that read it |
 | --- | --- | --- |
-| `judges/booking.yaml` | every reservation | `asked-for` (`requested` >= 60), `personal-is-the-travellers` (`personal` >= 70) |
-| `judges/mission-proposal.yaml` | the trip the agent proposes to the Person Server | `proposed-as-asked` (`requested` >= 60) |
+| `judges/booking.yaml` | every reservation | `asked-for` (`requested` >= 50), `personal-is-the-travellers` (`personal` >= 70) |
+| `judges/mission-proposal.yaml` | the trip the agent proposes to the Person Server | `proposed-as-asked` (`requested` >= 50) |
 
 A judge's `attributes` names the resource attributes Jev sees. The booking judge
 names only what the provider signed in its quote, never the agent's claimed

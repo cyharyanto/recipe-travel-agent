@@ -7,7 +7,10 @@ questions:
   requested:
     instructions: >
       Is the proposed trip the one the traveller asked for: the same destination and
-      dates, with a budget no higher than any they named?
+      dates, suggesting a budget no higher than any they named? The dates are the
+      trip's span, so a proposal that lists only some of its flights is still the
+      same trip. Quoted fares that come to more than that budget are fine: the
+      manager decides those.
     criteria:
-      "true": The trip they described, within any budget they named.
-      "false": Another place or dates, or a higher budget than they named.
+      "true": The trip they described, suggesting no more than any budget they named, even when its quotes come to more.
+      "false": Another place or dates, or a suggested budget higher than they named.

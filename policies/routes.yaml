@@ -10,7 +10,9 @@ booking:
     path: /v1/quote
     action: booking.quote
     resource:
-      type: Search
+      type: Quote
+      attribute_map:
+        cabin: /cabin
   - method: POST
     path: /v1/reserve
     action: booking.reserve
@@ -42,3 +44,11 @@ person-server:
       type: TripProposal
       attribute_map:
         description: /description
+  - method: POST
+    path: /mission/*
+    action: mission.complete
+    context: [mission]
+    resource:
+      type: TripCompletion
+      attribute_map:
+        summary: /summary
