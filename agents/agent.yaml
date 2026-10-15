@@ -5,6 +5,7 @@ ai:
   thinking_level: low
 tools:
   - read
+  - today
   - search_offers
   - quote_flight
   - propose_trip
