@@ -32,6 +32,17 @@ async function call(path, body, signal, base = BOOKING_API_URL) {
   }
 }
 
+const POLICY_DENIED = "https://introspection.dev/problems/policy-denied";
+
+function refusedByPolicy(res) {
+  if (res.status !== 403) return false;
+  try {
+    return JSON.parse(res.text).type === POLICY_DENIED;
+  } catch {
+    return false;
+  }
+}
+
 function result(res) {
   const unavailable = res.status === 0 || res.status === 401 || res.status >= 500;
   failuresInARow = unavailable ? failuresInARow + 1 : 0;
@@ -43,8 +54,8 @@ function result(res) {
   return {
     content: [{ type: "text", text }],
     details: { status: res.status },
-    // A 428 is the approval steer, which carries what to tell the person.
-    isError: res.status === 0 || (res.status >= 400 && res.status !== 428),
+    // A 428 is the approval steer and a policy refusal is a decision; each carries what to tell the person.
+    isError: res.status === 0 || (res.status >= 400 && res.status !== 428 && !refusedByPolicy(res)),
   };
 }
 
