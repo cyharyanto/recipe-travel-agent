@@ -46,7 +46,7 @@ speaks for the people it serves.
   "name": "Flight Sector booking",
   "provider": "flightsector",
   "auth_mode": "aauth",
-  "api_hosts": ["api.booking.example"],            // the egress signs requests to these
+  "api_hosts": ["api.flightsector.example"],       // the booking provider's real host; the egress signs requests to it
   "person_server_url": "https://ps.acme.example",  // where the egress exchanges resource tokens
   "application_id": "…",                           // the application whose client id is the agent's identity
   "policy_entities": [                             // what policies/ may read about each customer company
@@ -61,14 +61,16 @@ organization's security boundary.
 ### 2. Recipe: the agent
 
 `agents/agent.yaml` and `extensions/booking.js`. The tools make plain HTTPS
-calls to `https://api.booking.example`; nothing in them holds a credential or
-knows about AAuth.
+calls to the URL in the project's `BOOKING_API_URL` variable; nothing in them
+holds a credential or knows about AAuth.
 
-That host is a placeholder: it resolves nowhere on its own. The project's
-booking connector lists it in `api_hosts`, and its `aauth_upstream` names the
-booking provider the egress actually sends to, signing for `aauth_resource`.
-So the agent books only with that connector set up and a live AAuth booking
-provider behind it, which the `aauth-travel` example runs and wires up.
+`BOOKING_API_URL` is required and points at the booking provider itself, whose
+host the project's booking connector lists in `api_hosts`. The egress
+intercepts those calls, applies the policies below and signs them under the
+connector. Without the variable every booking tool answers that booking is not
+configured. So the agent books only with that variable, that connector and a
+live AAuth booking provider, which the `aauth-travel` example runs and wires
+up.
 
 ### 3. Policies: the builder's rails (`policies/`)
 
