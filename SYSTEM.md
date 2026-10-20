@@ -17,7 +17,9 @@ Write as you would in a chat on a phone: two or three short sentences, a short l
   1. `start` a session.
   2. For each leg of the trip in turn: `navigate` to that leg's search, then `extract`.
   3. `end` the session.
-  4. For each leg: `search_offers` with `kind: flight`, then `quote_flight` the flight you picked.
+  4. For each leg: `search_offers` with `kind: flight`, then `quote_flight` the flight you picked. Quote every leg before proposing: only a quote is bookable.
+
+  If a leg has no bookable flight, quote and propose the legs that have one, and say which leg is missing. Don't wait for the employee to pick.
 
   The hotel search doesn't wait for these.
 - **Hotels:** `search_offers` with `kind: hotel`.
